@@ -164,7 +164,8 @@ module PuppetX::Puppetlabs
 
     def get_job_script_and_control_repo(target_dir)
       endpoint = "#{@owner_route}/getJobScriptAndControlRepo?jobInstanceId=#{task_id}"
-      make_request(:get, endpoint, '', target_dir)
+      response = make_request(:get, endpoint, '')
+      create_and_write_temp_file(target_dir, response.body)
     end
 
     private
@@ -196,7 +197,7 @@ module PuppetX::Puppetlabs
       endpoint
     end
 
-    def make_request(type, api_url, payload = '', target_file = nil)
+    def make_request(type, api_url, payload = '')
       connection = Net::HTTP.new(@config[:server], @config[:port])
       if @config[:scheme] == 'https'
         connection.use_ssl = true
@@ -237,9 +238,6 @@ module PuppetX::Puppetlabs
 
         case response
         when Net::HTTPSuccess
-          if (!target_file.nil?)
-            create_and_write_temp_file(target_file, response.body)
-          end
           return response
         when Net::HTTPRedirection
           return response

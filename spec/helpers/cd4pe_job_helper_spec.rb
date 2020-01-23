@@ -2,6 +2,10 @@ require 'open3'
 require_relative '../../lib/puppet_x/puppetlabs/cd4pe_job_helper.rb'
 
 describe 'cd4pe_job_helper' do
+  before(:all) do
+    @@logs = []
+  end
+
   before(:each) do
     @working_dir = File.join(Dir.getwd, "test_working_dir")
     Dir.mkdir(@working_dir)
@@ -117,6 +121,7 @@ end
 describe 'cd4pe_job_helper::run_job' do
 
   before(:all) do
+    @@logs = []
     @working_dir = File.join(Dir.getwd, "test_working_dir")
     cd4pe_job_dir = File.join(@working_dir, 'cd4pe_job')
     jobs_dir = File.join(cd4pe_job_dir, 'jobs')
@@ -142,15 +147,14 @@ describe 'cd4pe_job_helper::run_job' do
     FileUtils.remove_dir(@working_dir)
   end
 
-  it 'Attempts to use docker whe docker_image is specified during initialization' do
+  it 'Attempts to use docker when docker_image is specified during initialization' do
     $stdout = StringIO.new
     fake_docker_image = 'yolo/swag:for-the-lulz'
     job_helper = PuppetX::Puppetlabs::CD4PEJobHelper.new(working_dir: @working_dir, docker_image: fake_docker_image)
-    job_helper.run_job
-
-    output = JSON.parse($stdout.string)
-    expect(output['job']['exit_code']).to eq(125)
-    expect(output['job']['message'].start_with?("Unable to find image 'yolo/swag:for-the-lulz'")).to be(true)
+    output = job_helper.run_job
+    
+    expect(output[:job][:exit_code]).to eq(125)
+    expect(output[:job][:message].start_with?("Unable to find image 'yolo/swag:for-the-lulz'")).to be(true)
   end
 
   it 'Runs the success script after a successful script run' do
@@ -163,13 +167,12 @@ describe 'cd4pe_job_helper::run_job' do
     File.write(@after_job_success_script, "echo #{after_job_success_message}")
 
     job_helper = PuppetX::Puppetlabs::CD4PEJobHelper.new(working_dir: @working_dir)
-    job_helper.run_job
+    output = job_helper.run_job
 
-    output = JSON.parse($stdout.string)
-    expect(output['job']['exit_code']).to eq(0)
-    expect(output['job']['message']).to eq("#{expected_output}\n")
-    expect(output['after_job_success']['exit_code']).to eq(0)
-    expect(output['after_job_success']['message']).to eq("#{after_job_success_message}\n")
+    expect(output[:job][:exit_code]).to eq(0)
+    expect(output[:job][:message]).to eq("#{expected_output}\n")
+    expect(output[:after_job_success][:exit_code]).to eq(0)
+    expect(output[:after_job_success][:message]).to eq("#{after_job_success_message}\n")
 
   end
 
@@ -182,13 +185,12 @@ describe 'cd4pe_job_helper::run_job' do
     File.write(@after_job_failure_script, "echo #{after_job_failure_message}")
 
     job_helper = PuppetX::Puppetlabs::CD4PEJobHelper.new(working_dir: @working_dir)
-    job_helper.run_job
+    output = job_helper.run_job
 
-    output = JSON.parse($stdout.string)
-    expect(output['job']['exit_code']).to eq(127)
-    expect(output['job']['message'].end_with?("command not found\n")).to be(true)
-    expect(output['after_job_failure']['exit_code']).to eq(0)
-    expect(output['after_job_failure']['message']).to eq("#{after_job_failure_message}\n")
+    expect(output[:job][:exit_code]).to eq(127)
+    expect(output[:job][:message].end_with?("command not found\n")).to be(true)
+    expect(output[:after_job_failure][:exit_code]).to eq(0)
+    expect(output[:after_job_failure][:message]).to eq("#{after_job_failure_message}\n")
   end
 
 end
